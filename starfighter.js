@@ -5,8 +5,6 @@
 // SCENE
 
 
-
-
 var createScene = function(canvas, engine) {
 
     // keyboard inputs
@@ -19,49 +17,41 @@ var createScene = function(canvas, engine) {
     }    
     window.addEventListener('keydown', function(event) { updateInput(event, true); });
     window.addEventListener('keyup', function(event) { updateInput(event, false); });
+    var V = function(x, y, z) { return new BABYLON.Vector3(+x, +y, +z); };              // shortener function
     
     // Scene
     var scene = new BABYLON.Scene(engine);
     scene.clearColor = BABYLON.Color3.Black();
     //var camera = new BABYLON.ArcRotateCamera("Camera", 0, 0, 10, BABYLON.Vector3.Zero(), scene);
-    var camera = new BABYLON.TargetCamera("camera", BABYLON.Vector3.Zero(), scene);
+    var camera = new BABYLON.TargetCamera("camera", V(0.0, 0.0, 0.0), scene);
     //camera.attachControl(canvas, true);  
-    camera.direction = new BABYLON.Vector3(0.0, 1.0, 1.0);
+    camera.direction = V(0.0, 1.0, 1.0);
     
-    var light = new BABYLON.HemisphericLight('light1', new BABYLON.Vector3(0.0, 0.0, -1.0), scene);
+    var light = new BABYLON.HemisphericLight('light1', V(0.0, 0.0, -1.0), scene);
     light.intensity = 0.7;
-    var pointLight = new BABYLON.PointLight('pointLight', BABYLON.Vector3.Zero(), scene);
+    var pointLight = new BABYLON.PointLight('pointLight', V(0.0, 0.0, 0.0), scene);
     pointLight.diffuse = new BABYLON.Color3(0, 0, 1);
     pointLight.specular = new BABYLON.Color3(0.5, 0.5, 1);
     pointLight.intensity = 0.0;
+    var plIntensity = 0.8;
 
     // Cockpit
-    var V = function(x, y, z) { return new BABYLON.Vector3(+x, +y, +z); };
-    //var path1 = [ V(-1.5, 0.6, 0.0),   V(-0.5, -0.5, 1.5),  V(0.5, -0.5, 1.5),   V(1.5, 0.6, 0.0)];
-    //var path2 = [ V(-1.5, 0.599, 0.3), V(-0.5, -0.499, 1.8), V(0.5, -0.499, 1.8), V(1.5, 0.599, 0.3)];
-    var circlePath1 = [];
-    var circlePath2 = [];
-    var pi2 = Math.PI * 2.0;
-    var step = 64.0;
-    var r1 = 0.7;
-    var r2 = 0.75;
-    for (var a = 0; a < step; a++) {
-        var ang = a * pi2 / step;
-        circlePath1.push(V(r1 * Math.cos(ang), r1 * Math.sin(ang), 0.1));
-        circlePath2.push(V(r2 * Math.cos(ang), r2 * Math.sin(ang), 0.0));
+    var path1 = [V(-1.5, 0.5, 0.0), V(-0.5, -0.8, 3.0)];
+    var path2 = [V(1.5, 0.5, 0.0), V(0.5, -0.8, 3.0)];
+    var tube1 = BABYLON.MeshBuilder.CreateTube('t1', {path: path1, radius: 0.03}, scene); 
+    var tube2 = BABYLON.MeshBuilder.CreateTube('t2', {path: path2, radius: 0.03}, scene);
+    var rpath1 = [];
+    var rpath2 = [];
+    for (var r = 0; r <= 10; r ++) {
+        var t = r / 10; 
+        rpath1.push( V(-0.5 + t, -0.05 * Math.cos(r * Math.PI / 5) - 0.75, 3.1) );
+        rpath2.push( V(-0.5 + t, -1.0, 0.0 ) );
     }
-    var path1 = [V(-r2, 0.1, 0.0), V(-r1, 0.1, -1.40)];
-    var path2 = [V(-r2, 0.0, 0.0), V(-r1, 0.0, -1.40)];
-    var cockpitBand = BABYLON.MeshBuilder.CreateRibbon("cb", {pathArray: [path1, path2], sideOrientation: BABYLON.Mesh.BACKSIDE}, scene);
-    cockpitBand.position.z = 3.0;
-    var cockpitBand2 = cockpitBand.createInstance("cb2");
-    cockpitBand2.position.z = 6.0;
-    cockpitBand2.position.x = r2;
-    var cockpitRibbon = BABYLON.MeshBuilder.CreateRibbon("ck", {pathArray: [circlePath1, circlePath2], closePath: true}, scene);
-    cockpitRibbon.position.z = 3.0;
-    var cockpitRibbon2 = cockpitRibbon.createInstance("ck2");
-    cockpitRibbon2.position.z = 1.5;
-    cockpitRibbon.freezeWorldMatrix();
+    var rib = BABYLON.MeshBuilder.CreateRibbon('rb', { pathArray: [rpath1, rpath2] }, scene);
+    var cockpit = BABYLON.Mesh.MergeMeshes([tube1, tube2, rib], true, true);
+    rib = tube1 = tube2 = null;
+    
+
     
     // Cannons
     var halfPI = Math.PI / 2.0;
@@ -78,11 +68,11 @@ var createScene = function(canvas, engine) {
     };
     var cannon0 = BABYLON.MeshBuilder.CreateTube("c0", {path: canPath, radiusFunction: radiusFunction }, scene);
     var canTexture = new BABYLON.Texture("rusty.jpg", scene);
+    //canTexture.uScale = 0.1;
     canMat.diffuseTexture = canTexture;
     cannon0.material = canMat;
-    cockpitBand.material = canMat;
-    cockpitRibbon.material = canMat;
     cannon0.position = canPos;
+    cockpit.material = canMat;
     
     var cannon1 = cannon0.createInstance("c1", scene);
     cannon1.position.x = -cannon0.position.x;
@@ -240,12 +230,12 @@ var createScene = function(canvas, engine) {
                 p[i].alive = false;                // laser lights
                 p[i].isVisible = false;
                 p[i].position.z = lightDistance;
-                p[i].velocity.z = 1.0;
+                p[i].velocity.z = 0.5;
                 p[i].color.r = 0.4;
                 p[i].color.g = 0.4;
                 p[i].color.b = 1.0;
-                p[i].color.a = 0.9;
-                p[i].scale.x = distance / lightDistance * 2;
+                p[i].color.a = 0.8;
+                p[i].scale.x = distance / lightDistance * 1.2;
                 p[i].scale.y = p[i].scale.x;
             }
         }
@@ -293,8 +283,6 @@ var createScene = function(canvas, engine) {
                    p.alive = false;
                    p.isVisible = false;
                }
-               
-
            }
 
        }
@@ -372,7 +360,7 @@ var createScene = function(canvas, engine) {
                     stars.particles[lg].position.z = lightDistance;
                     stars.particles[lg].isVisible = true;                                                                   // make the laser light visible
                     pointLight.position.copyFrom(ball.mesh.position);
-                    pointLight.intensity = 1.0;
+                    pointLight.intensity = plIntensity;
                     search = false;                                 // a free laser is just got from the pool, don't search further
                 } else {
                     l++;

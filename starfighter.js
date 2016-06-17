@@ -36,8 +36,8 @@ var createScene = function(canvas, engine) {
     var plIntensity = 0.8;
 
     // Cockpit
-    var path1 = [V(-1.5, 0.5, 0.0), V(-0.5, -0.8, 3.0)];
-    var path2 = [V(1.5, 0.5, 0.0), V(0.5, -0.8, 3.0)];
+    var path1 = [V(-1.5, 0.8, 0.0), V(-0.5, -0.8, 3.0)];
+    var path2 = [V(1.5, 0.8, 0.0), V(0.5, -0.8, 3.0)];
     var tube1 = BABYLON.MeshBuilder.CreateTube('t1', {path: path1, radius: 0.03}, scene); 
     var tube2 = BABYLON.MeshBuilder.CreateTube('t2', {path: path2, radius: 0.03}, scene);
     var rpath1 = [];
@@ -49,6 +49,8 @@ var createScene = function(canvas, engine) {
     }
     var rib = BABYLON.MeshBuilder.CreateRibbon('rb', { pathArray: [rpath1, rpath2] }, scene);
     var cockpit = BABYLON.Mesh.MergeMeshes([tube1, tube2, rib], true, true);
+    cockpit.alwaysSelectAsActiveMesh = true;
+    cockpit.freezeWorldMatrix();
     rib = tube1 = tube2 = null;
     
 
@@ -57,8 +59,8 @@ var createScene = function(canvas, engine) {
     var halfPI = Math.PI / 2.0;
     var canMat = new BABYLON.StandardMaterial("cm", scene);
     var canPos = new BABYLON.Vector3(-1.5, -1, 2.2);
-    var canLength = 0.3;
-    var canRadius = 0.03;
+    var canLength = 0.4;
+    var canRadius = 0.04;
     var canPath = [V(0.0, 0.0, 0.0), V(0.0, 0.0, canLength * .80), V(0.0, 0.0, canLength * .80), V(0.0, 0.0, canLength)];
     var radiusFunction = function(i, dist) {
         var rad = canRadius;
@@ -67,6 +69,7 @@ var createScene = function(canvas, engine) {
         return rad;
     };
     var cannon0 = BABYLON.MeshBuilder.CreateTube("c0", {path: canPath, radiusFunction: radiusFunction }, scene);
+    
     var canTexture = new BABYLON.Texture("rusty.jpg", scene);
     //canTexture.uScale = 0.1;
     canMat.diffuseTexture = canTexture;
@@ -81,6 +84,11 @@ var createScene = function(canvas, engine) {
     var cannon3 = cannon0.createInstance("c3", scene);
     cannon3.position.y = cannon2.position.y;
     cannon3.position.x = cannon1.position.x;
+
+    cannon0.alwaysSelectAsActiveMesh = true;
+    cannon1.alwaysSelectAsActiveMesh = true;
+    cannon2.alwaysSelectAsActiveMesh = true;
+    cannon3.alwaysSelectAsActiveMesh = true;
 
     var cannons = [cannon0, cannon1, cannon2, cannon3];
     var cannonDirections = [V(0.0, 0.0, 0.0), V(0.0, 0.0, 0.0), V(0.0, 0.0, 0.0), V(0.0, 0.0, 0.0)]; 
@@ -397,7 +405,6 @@ var createScene = function(canvas, engine) {
         stars.setParticles();
         setSightAndCannons();
         setLasers();
-
     });
     
     return scene;

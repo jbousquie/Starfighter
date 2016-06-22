@@ -50,7 +50,9 @@ var createScene = function(canvas, engine) {
     var Ennemy = function(sps) {
         this.sps = sps;                         // ennemy SPS
         this.mesh = sps.mesh;                   // ennemy SPS mesh
-        this.hit = false;                       // ennemy hit
+        this.maxShield = 10|0;                  // ennemy resistance
+        this.shield = this.maxShield;           // current shield value
+        this.explosion = false;                 // if the ennemy is exploding
     };
         // Ennemy mesh
     var ennemyModel= BABYLON.MeshBuilder.CreatePolyhedron('emod', {type: 1, size: 0.5, sizeX: 1.5, sizeZ: 2.5}, scene);
@@ -403,7 +405,7 @@ var createScene = function(canvas, engine) {
                     laser.direction.scaleToRef(canLength + Math.random() * 0.05, ballPos);                  // set the ball position from the cannon and the laser direction
                     ball.mesh.position.copyFrom(ballPos.addInPlace(cannons[can].position));
                     stars.particles[lg].alive = true;                                                                       // activate the related laser light in the star sps
-                    stars.particles[lg].position.x = pointerDistanceX * ballFovCorrection * aspectRatio;  // set the laser light position in the distance with a correction
+                    stars.particles[lg].position.x = pointerDistanceX * ballFovCorrection * aspectRatio;                    // set the laser light position in the distance with a correction
                     stars.particles[lg].position.y = pointerDistanceY * ballFovCorrection;
                     stars.particles[lg].position.z = lightDistance;
                     stars.particles[lg].isVisible = true;                                                                   // make the laser light visible
@@ -450,7 +452,10 @@ var createScene = function(canvas, engine) {
                     boxSizeY = (bbox.maximumWorld.y - bbox.minimumWorld.y) / 2.0 / ennemyCorrection;
 
                     if (laser.screenTarget.x >= eX- boxSizeX && laser.screenTarget.x <= eX + boxSizeX && laser.screenTarget.y >= eY - boxSizeY && laser.screenTarget.y <= eY + boxSizeY ) {
-                        ennemies[e].hit = true;
+                        ennemies[e].shield--;
+                        if (ennemies[e].shield == 0) {
+                            ennemies[e].explosion = true;
+                        } 
                     }
 
                 }
@@ -461,11 +466,19 @@ var createScene = function(canvas, engine) {
 
     // Ennemy behavior
     var setEnnemies = function() {
+        var en = ennemies[0];
         for (e = 0|0; e < ennemyNb; e++) {
-            ennemies[e].mesh.rotation.y += 0.01;
-            ennemies[e].mesh.position.z = 40 + 5 * Math.sin(ennemies[e].mesh.rotation.y + e);
-            ennemies[e].mesh.position.y += Math.sin(ennemies[e].mesh.rotation.y + e / 2) / 10;
-            ennemies[e].mesh.position.x += Math.cos(ennemies[e].mesh.rotation.y - e) / 20;
+            en = ennemies[e];
+            if (en.explosion) {
+
+            } else {
+                en.mesh.rotation.y += 0.01;
+                en.mesh.position.z = 40 + 5 * Math.sin(en.mesh.rotation.y + e);
+                en.mesh.position.y += Math.sin(en.mesh.rotation.y + e / 2) / 10;
+                en.mesh.position.x += Math.cos(en.mesh.rotation.y - e) / 20;
+            }
+            en.mesh.position.x -= pointerDistanceX * en.mesh.position.z  / distance;
+            en.mesh.position.y -= pointerDistanceY * en.mesh.position.z  / distance;
         }
     };
 

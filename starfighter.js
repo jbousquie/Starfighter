@@ -39,6 +39,7 @@ var createScene = function(canvas, engine) {
 
     // Ennemies
     var ennemyNb = 5;                           // Max number of ennemies
+    var ennemyExplosionVelocity = 1.05;         // Ennemy particle velocity
     var ennemies = new Array(ennemyNb);
     var ennemyCorrection = 0.0;                 // tmp var for ennemy FOV correction
     var eX = 0.0;                               // tmp var for current ennemy x coordinate in the screen space
@@ -53,6 +54,18 @@ var createScene = function(canvas, engine) {
         this.maxShield = 10|0;                  // ennemy resistance
         this.shield = this.maxShield;           // current shield value
         this.explosion = false;                 // if the ennemy is exploding
+        this.mustRebuild = false;               // if the sps must be rebuilt
+        this.initialParticlePositions = [];     // initial SPS particle positions coputed with digest()
+        var initPos = this.initialParticlePositions;
+        this.rebuild = function() {
+            for (var ip = 0|0; ip < sps.nbParticles; ip++) {
+                sps.particles[ip].position.copyFrom(initPos[ip]);
+                sps.particles[ip].color.a = 1.0;
+                sps.particles[ip].rotation.x = 0.0;
+                sps.particles[ip].rotation.y = 0.0;
+                sps.particles[ip].rotation.z = 0.0;
+            }
+        };
     };
         // Ennemy mesh
     var ennemyModel= BABYLON.MeshBuilder.CreatePolyhedron('emod', {type: 1, size: 0.5, sizeX: 1.5, sizeZ: 2.5}, scene);
@@ -63,7 +76,24 @@ var createScene = function(canvas, engine) {
         ennemySPS.buildMesh();
         ennemySPS.setParticles();
         ennemySPS.refreshVisibleSize();
+        ennemySPS.mesh.hasVertexAlpha = true;
         ennemies[e] = new Ennemy(ennemySPS);
+        for (var ep = 0|0; ep < ennemySPS.nbParticles; ep++) {
+            ennemies[e].initialParticlePositions.push(ennemySPS.particles[ep].position.clone());
+        }
+        ennemySPS.updateParticle = function(p) {
+            if (ennemies[e].explosion) {
+                p.position.scaleInPlace(ennemyExplosionVelocity);
+                p.rotation.x = 1.0 / p.position.x - 1.0;
+                p.rotation.y = 1.0 / p.position.y - 1.0;
+                p.rotation.z = 1.0 / p.position.z - 1.0;
+                p.color.a -= 0.005;
+                if (p.color.a < 0.01) {
+                    ennemies[e].mustRebuild = true;
+                }
+            }
+        };
+
         ennemySPS.mesh.position.z = 30;
         ennemySPS.mesh.position.y = -2;
         ennemySPS.mesh.position.x = -24 + 12 * e;
@@ -465,22 +495,35 @@ var createScene = function(canvas, engine) {
     };
 
     // Ennemy behavior
+    var ennemyLimitX = 50.0;
+    var ennemyLimitY = 50.0;
     var setEnnemies = function() {
         var en = ennemies[0];
         for (e = 0|0; e < ennemyNb; e++) {
             en = ennemies[e];
             if (en.explosion) {
-
+                if (en.mustRebuild) {
+                    en.rebuild();
+                    en.mustRebuild = false;
+                    en.explosion = false;
+                    en.shield = en.maxShield;
+                }
+                en.sps.setParticles();
             } else {
                 en.mesh.rotation.y += 0.01;
                 en.mesh.position.z = 40 + 5 * Math.sin(en.mesh.rotation.y + e);
-                en.mesh.position.y += Math.sin(en.mesh.rotation.y + e / 2) / 10;
-                en.mesh.position.x += Math.cos(en.mesh.rotation.y - e) / 20;
+                if (Math.abs(en.mesh.position.x) < ennemyLimitX) {  
+                    en.mesh.position.x += Math.cos(en.mesh.rotation.y - e) / 20;
+                }
+                if (Math.abs(en.mesh.position.y) < ennemyLimitY) {
+                    en.mesh.position.y += Math.sin(en.mesh.rotation.y + e / 2) / 10;
+                }
             }
             en.mesh.position.x -= pointerDistanceX * en.mesh.position.z  / distance;
             en.mesh.position.y -= pointerDistanceY * en.mesh.position.z  / distance;
         }
     };
+
 
 
     //scene.debugLayer.show();

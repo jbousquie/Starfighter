@@ -34,28 +34,30 @@ var createScene = function(canvas, engine) {
     var pointLight = new BABYLON.PointLight('pointLight', V(0.0, 0.0, 0.0), scene);
     pointLight.diffuse = new BABYLON.Color3(0, 0, 1);
     pointLight.specular = new BABYLON.Color3(0.5, 0.5, 1);
-    pointLight.intensity = 0.0;
-    var plIntensity = 0.8;
+    var plIntensity = 0.6;
+    pointLight.intensity = plIntensity;
 
-    // Ennemies
-    var ennemyNb = 5;                           // Max number of ennemies
-    var ennemyExplosionVelocity = 1.05;         // Ennemy particle velocity
-    var ennemies = new Array(ennemyNb);
-    var ennemyCorrection = 0.0;                 // tmp var for ennemy FOV correction
-    var eX = 0.0;                               // tmp var for current ennemy x coordinate in the screen space
-    var eY = 0.0;                               // tmp var for current ennemy y coordinate in the screen space
-    var bbox;                                   // tmp var for current ennemy mesh bounding box
-    var boxSizeX = 0.0;                         // tmp var for current ennemy x half size in the screen space
-    var boxSizeY = 0.0;                         // tmp var for current ennemy y half size in the screen space
-        // Ennemy object
-    var Ennemy = function(sps) {
-        this.sps = sps;                         // ennemy SPS
-        this.mesh = sps.mesh;                   // ennemy SPS mesh
-        this.maxShield = 10|0;                  // ennemy resistance
+
+    // enemies
+    var EnemyNb = 5;                           // Max number of enemies
+    var EnemyExplosionVelocity = 1.15;         // Enemy particle max velocity
+    var enemies = new Array(EnemyNb);
+    var EnemyCorrection = 0.0;                 // tmp var for Enemy FOV correction
+    var eX = 0.0;                               // tmp var for current Enemy x coordinate in the screen space
+    var eY = 0.0;                               // tmp var for current Enemy y coordinate in the screen space
+    var bbox;                                   // tmp var for current Enemy mesh bounding box
+    var boxSizeX = 0.0;                         // tmp var for current Enemy x half size in the screen space
+    var boxSizeY = 0.0;                         // tmp var for current Enemy y half size in the screen space
+        // Enemy object
+    var Enemy = function(sps) {
+        this.sps = sps;                         // Enemy SPS
+        this.mesh = sps.mesh;                   // Enemy SPS mesh
+        this.maxShield = 10|0;                  // Enemy resistance
         this.shield = this.maxShield;           // current shield value
-        this.explosion = false;                 // if the ennemy is exploding
+        this.explosion = false;                 // if the Enemy is exploding
         this.mustRebuild = false;               // if the sps must be rebuilt
-        this.initialParticlePositions = [];     // initial SPS particle positions coputed with digest()
+        this.randAng = V(Math.random(), Math.random(), Math.random());  // random correction for enemy particle rotations and velocities
+        this.initialParticlePositions = [];     // initial SPS particle positions computed with digest()
         var initPos = this.initialParticlePositions;
         this.rebuild = function() {
             for (var ip = 0|0; ip < sps.nbParticles; ip++) {
@@ -64,42 +66,49 @@ var createScene = function(canvas, engine) {
                 sps.particles[ip].rotation.x = 0.0;
                 sps.particles[ip].rotation.y = 0.0;
                 sps.particles[ip].rotation.z = 0.0;
+                sps.particles[ip].velocity.copyFrom(sps.particles[ip].position);
+                sps.particles[ip].velocity.scaleInPlace(Math.random() * EnemyExplosionVelocity);
             }
         };
     };
-        // Ennemy mesh
-    var ennemyModel= BABYLON.MeshBuilder.CreatePolyhedron('emod', {type: 1, size: 0.5, sizeX: 1.5, sizeZ: 2.5}, scene);
+        // Enemy mesh
+    var EnemyModel= BABYLON.MeshBuilder.CreatePolyhedron('emod', {type: 1, size: 0.5, sizeX: 1.5, sizeZ: 2.5}, scene);
     var e = 0|0;
-    for (e = 0|0; e < ennemyNb; e++) {
-        var ennemySPS = new BABYLON.SolidParticleSystem('es'+e, scene);
-        ennemySPS.digest(ennemyModel);
-        ennemySPS.buildMesh();
-        ennemySPS.setParticles();
-        ennemySPS.refreshVisibleSize();
-        ennemySPS.mesh.hasVertexAlpha = true;
-        ennemies[e] = new Ennemy(ennemySPS);
-        for (var ep = 0|0; ep < ennemySPS.nbParticles; ep++) {
-            ennemies[e].initialParticlePositions.push(ennemySPS.particles[ep].position.clone());
+    for (e = 0|0; e < EnemyNb; e++) {
+        var EnemySPS = new BABYLON.SolidParticleSystem('es'+e, scene);
+        EnemySPS.digest(EnemyModel);
+        EnemySPS.buildMesh();
+        EnemySPS.setParticles();
+        EnemySPS.refreshVisibleSize();
+        EnemySPS.mesh.hasVertexAlpha = true;
+        enemies[e] = new Enemy(EnemySPS);
+        for (var ep = 0|0; ep < EnemySPS.nbParticles; ep++) {
+            var curPart = EnemySPS.particles[ep];
+            enemies[e].initialParticlePositions.push(curPart.position.clone());
+            curPart.velocity.copyFrom(curPart.position);
+            curPart.velocity.multiplyInPlace(enemies[e].randAng);
+            curPart.velocity.scaleInPlace(EnemyExplosionVelocity);
         }
-        ennemySPS.updateParticle = function(p) {
-            if (ennemies[e].explosion) {
-                p.position.scaleInPlace(ennemyExplosionVelocity);
-                p.rotation.x = 1.0 / p.position.x - 1.0;
-                p.rotation.y = 1.0 / p.position.y - 1.0;
-                p.rotation.z = 1.0 / p.position.z - 1.0;
+        EnemySPS.updateParticle = function(p) {
+            // explosion
+            if (enemies[e].explosion) {
+                p.position.addInPlace(p.velocity);
+                p.rotation.x += p.velocity.z * enemies[e].randAng.x;
+                p.rotation.y += p.velocity.x * enemies[e].randAng.y;
+                p.rotation.z += p.velocity.y * enemies[e].randAng.z;
                 p.color.a -= 0.005;
                 if (p.color.a < 0.01) {
-                    ennemies[e].mustRebuild = true;
+                    enemies[e].mustRebuild = true;
                 }
             }
         };
 
-        ennemySPS.mesh.position.z = 30;
-        ennemySPS.mesh.position.y = -2;
-        ennemySPS.mesh.position.x = -24 + 12 * e;
-        ennemySPS.mesh.rotation.y = e / 10;
+        EnemySPS.mesh.position.z = 30;
+        EnemySPS.mesh.position.y = -2;
+        EnemySPS.mesh.position.x = -24 + 12 * e;
+        EnemySPS.mesh.rotation.y = e / 10;
     }
-    ennemyModel.dispose();
+    EnemyModel.dispose();
 
 
     // Cockpit
@@ -244,6 +253,7 @@ var createScene = function(canvas, engine) {
     var lasers = [];        // laser pool
     var laser;              // current laser object reference : a laser or a laser ball
     var ball;               // current laser ball object reference 
+    var impact;             // current laser impact object reference
     var l = 0|0;            // laser index
     // lasers[] is populated with laserNb lasers and laserNb laser balls
     for (l = 0|0; l < laserNb * 2|0; l++) {
@@ -257,7 +267,7 @@ var createScene = function(canvas, engine) {
 
 
     // Stars ... and laser lights because they are exactly the same particle
-    var starNb = 300|0;                                                 // star total number in the pool
+    var starNb = 200|0;                                                 // star total number in the pool
     var starEmitterSize = 50.0;                                         // size width of the particle emitter square surface
 
     var distance = starEmitterSize * 1.2;                               // star emitter distance
@@ -281,7 +291,7 @@ var createScene = function(canvas, engine) {
     starTexture.hasAlpha = true;
     var stars = new BABYLON.SolidParticleSystem("stars", scene);
     var model = BABYLON.MeshBuilder.CreatePlane("p", {size: 0.2}, scene);
-    stars.addShape(model, starNb + laserNb);
+    stars.addShape(model, starNb + laserNb + laserNb);                  // starNb stars + laserNb lights + laserNb impacts
     model.dispose();
     stars.buildMesh();
     var starMat = new BABYLON.StandardMaterial("sm", scene);
@@ -303,7 +313,7 @@ var createScene = function(canvas, engine) {
                 p[i].position.y = starEmitterSize * (Math.random() - 0.5);
                 p[i].position.z = distance * Math.random();  
                 p[i].velocity.z = 1.1 - Math.random() * 0.2;
-            } else {    
+            } else if (i < starNb + laserNb) {    
                 p[i].alive = false;                // laser lights
                 p[i].isVisible = false;
                 p[i].position.z = lightDistance;
@@ -314,9 +324,18 @@ var createScene = function(canvas, engine) {
                 p[i].color.a = 0.8;
                 p[i].scale.x = distance / lightDistance * 1.2;
                 p[i].scale.y = p[i].scale.x;
+            }  else {                           // enemy impact or explosion
+                p[i].alive = false;
+                p[i].isVisible = false;
+                p[i].color.r = 0.6;
+                p[i].color.g = 0.6;
+                p[i].color.b = 1.0;
+                p[i].color.a = 0.95;
+                p[i].position.z = sightDistance;
             }
         }
-    }
+    };
+
    
 
    // Angle values for all particles : called once per call to setParticles()
@@ -351,20 +370,32 @@ var createScene = function(canvas, engine) {
                 p.scale.y = p.scale.x;
                 p.velocity.z = 1.1 - Math.random() * 0.2;
             }
-       } else {                 // laser light
-           if (p.alive) {
-               // move
-               p.position.z += p.velocity.z;
-               p.position.x -= pointerDistanceX * p.position.z * p.velocity.z / distance;
-               p.position.y -= pointerDistanceY * p.position.z * p.velocity.z / distance;
-               // recycle
-               if (p.position.z > distance) {
-                   p.alive = false;
-                   p.isVisible = false;
-               }
-           }
+       } else if (p.idx < starNb + laserNb) {               // laser light
+            if (p.alive) {
+                // move
+                p.position.z += p.velocity.z;
+                p.position.x -= pointerDistanceX * p.position.z * p.velocity.z / distance;
+                p.position.y -= pointerDistanceY * p.position.z * p.velocity.z / distance;
+                // recycle
+                if (p.position.z > distance) {
+                    p.alive = false;
+                    p.isVisible = false;
+                }
+            }
+        } else {                                       // enemy impact or explosion
+            if (p.alive) {
+                p.position.x -= pointerDistanceX * p.position.z * p.velocity.z / distance;
+                p.position.y -= pointerDistanceY * p.position.z * p.velocity.z / distance; 
+                p.color.a -= 0.01;
+                p.scale.x -= 0.1;
+                p.scale.y = p.scale.x;
+                if (p.scale.x < 0.01) {
+                    p.alive = false;
+                    p.isVisible = false;
+                }              
+            }
 
-       }
+        }
    }
    
     // star initialization
@@ -472,55 +503,65 @@ var createScene = function(canvas, engine) {
                 laser.fired = false;
                 ball.fired = false;
                 p.alive = false;
-                // check ennemy hit
-                for (e = 0|0; e < ennemyNb; e++) {
-                    ennemyCorrection = ennemies[e].mesh.position.z * cameraFov;
-                    eX = ennemies[e].mesh.position.x / (ennemyCorrection * aspectRatio);
-                    eY = ennemies[e].mesh.position.y / ennemyCorrection;
-                    bbox = ennemies[e].mesh.getBoundingInfo().boundingBox;
-                    boxSizeX = (bbox.maximumWorld.x - bbox.minimumWorld.x) / 2.0 / (ennemyCorrection * aspectRatio);
-                    boxSizeY = (bbox.maximumWorld.y - bbox.minimumWorld.y) / 2.0 / ennemyCorrection;
-
+                // check Enemy hit
+                for (e = 0|0; e < EnemyNb; e++) {
+                    // compute the enemy 2D coordinates in the screen space
+                    EnemyCorrection = enemies[e].mesh.position.z * cameraFov;
+                    eX = enemies[e].mesh.position.x / (EnemyCorrection * aspectRatio);
+                    eY = enemies[e].mesh.position.y / EnemyCorrection;
+                    // enemy bbox in the screen space
+                    bbox = enemies[e].mesh.getBoundingInfo().boundingBox;
+                    boxSizeX = (bbox.maximumWorld.x - bbox.minimumWorld.x) / 2.0 / (EnemyCorrection * aspectRatio);
+                    boxSizeY = (bbox.maximumWorld.y - bbox.minimumWorld.y) / 2.0 / EnemyCorrection;
+                    // check if the target is in the AABB
                     if (laser.screenTarget.x >= eX- boxSizeX && laser.screenTarget.x <= eX + boxSizeX && laser.screenTarget.y >= eY - boxSizeY && laser.screenTarget.y <= eY + boxSizeY ) {
-                        ennemies[e].shield--;
-                        if (ennemies[e].shield == 0) {
-                            ennemies[e].explosion = true;
+                        enemies[e].shield--;
+                        impact = stars.particles[starNb + laserNb + p.idx];     // get the related impact
+                        impact.isVisible = true;                                // activate the impact particle
+                        impact.alive = true;
+                        impact.position.x = laser.target.x;
+                        impact.position.y = laser.target.y;
+                        impact.scale.x = distance / enemies[e].mesh.position.z;
+                        impact.scale.y = impact.scale.x;
+                        if (enemies[e].shield == 0) {
+                            enemies[e].explosion = true;
                         } 
                     }
-
                 }
-
             } 
         }
     };
 
-    // Ennemy behavior
-    var ennemyLimitX = 50.0;
-    var ennemyLimitY = 50.0;
-    var setEnnemies = function() {
-        var en = ennemies[0];
-        for (e = 0|0; e < ennemyNb; e++) {
-            en = ennemies[e];
-            if (en.explosion) {
-                if (en.mustRebuild) {
+    // Enemy behavior
+    var EnemyLimitX = 50.0;
+    var EnemyLimitY = 50.0;
+    var setenemies = function() {
+        var en = enemies[0];
+        for (e = 0|0; e < EnemyNb; e++) {
+            en = enemies[e];
+            if (en.explosion) {             // if currently exploding
+                if (en.mustRebuild) {       // if explosion just finished, then rebuild and reset the Enemy
                     en.rebuild();
                     en.mustRebuild = false;
                     en.explosion = false;
+                    en.randAng.multiplyByFloats(Math.random(), Math.random(), Math.random());
                     en.shield = en.maxShield;
                 }
                 en.sps.setParticles();
             } else {
+                // Ennnemy flying around, tmp behavior : sinusoidal trajectory
                 en.mesh.rotation.y += 0.01;
                 en.mesh.position.z = 40 + 5 * Math.sin(en.mesh.rotation.y + e);
-                if (Math.abs(en.mesh.position.x) < ennemyLimitX) {  
-                    en.mesh.position.x += Math.cos(en.mesh.rotation.y - e) / 20;
-                }
-                if (Math.abs(en.mesh.position.y) < ennemyLimitY) {
-                    en.mesh.position.y += Math.sin(en.mesh.rotation.y + e / 2) / 10;
-                }
+                en.mesh.position.x += Math.cos(en.mesh.rotation.y - e) / 20;
+                en.mesh.position.y += Math.sin(en.mesh.rotation.y + e / 2) / 10;
             }
             en.mesh.position.x -= pointerDistanceX * en.mesh.position.z  / distance;
             en.mesh.position.y -= pointerDistanceY * en.mesh.position.z  / distance;
+            // keep the Enemy around the frustum
+            if (en.mesh.position.x < -EnemyLimitX) { en.mesh.position.x = -EnemyLimitX; }
+            if (en.mesh.position.x > EnemyLimitX)  { en.mesh.position.x = EnemyLimitX; }
+            if (en.mesh.position.y < -EnemyLimitY) { en.mesh.position.y = -EnemyLimitY; }
+            if (en.mesh.position.y > EnemyLimitY)  { en.mesh.position.y = EnemyLimitY; }
         }
     };
 
@@ -532,7 +573,7 @@ var createScene = function(canvas, engine) {
         stars.setParticles();
         setSightAndCannons();
         setLasers();
-        setEnnemies();
+        setenemies();
     });
     
     return scene;

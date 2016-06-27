@@ -266,7 +266,7 @@ var createScene = function(canvas, engine) {
     }
 
 
-    // Stars ... and laser lights because they are exactly the same particle
+    // Stars ... laser lights, laser impacts and explosions because they are exactly the same particle
     var starNb = 200|0;                                                 // star total number in the pool
     var starEmitterSize = 50.0;                                         // size width of the particle emitter square surface
 
@@ -303,6 +303,10 @@ var createScene = function(canvas, engine) {
     starMat.freeze();
     stars.mesh.hasVertexAlpha = true;
     light.excludedMeshes.push(stars.mesh);
+    var explosions = [];                                            // is an laser impact an explosion
+    for (var ex = 0|0; ex < laserNb; ex++) {
+        explosions[ex] = false;
+    }
 
         // Star SPS initialization
     stars.initParticles = function() {
@@ -330,7 +334,6 @@ var createScene = function(canvas, engine) {
                 p[i].color.r = 0.6;
                 p[i].color.g = 0.6;
                 p[i].color.b = 1.0;
-                p[i].color.a = 0.95;
                 p[i].position.z = sightDistance;
             }
         }
@@ -386,13 +389,36 @@ var createScene = function(canvas, engine) {
             if (p.alive) {
                 p.position.x -= pointerDistanceX * p.position.z * p.velocity.z / distance;
                 p.position.y -= pointerDistanceY * p.position.z * p.velocity.z / distance; 
-                p.color.a -= 0.01;
-                p.scale.x -= 0.1;
-                p.scale.y = p.scale.x;
-                if (p.scale.x < 0.01) {
-                    p.alive = false;
-                    p.isVisible = false;
-                }              
+                if (explosions[p.idx - starNb - laserNb]) {     // explosion
+                    p.color.a -= 0.05;
+                    p.scale.x *= (1.0 + 0.5 * Math.random());
+                    p.scale.y = p.scale.x / (1.1 + Math.random());
+                    p.color.r = 1.1 - Math.random() * 0.1;
+                    p.color.g = 1.1 - Math.random() * 0.1;
+                    p.color.b = 0.0;
+                    if (p.scale.x > 30.0) {
+                        p.isVisible = false;
+                        p.alive = false;
+                        p.color.a = 1.0;
+                        p.color.b = 1.0;
+                        p.color.r = 0.6;
+                        p.color.g = 0.6;
+                        explosions[p.idx - starNb - laserNb] = false;
+                    }
+                } else {                                        // impact
+                    p.color.a -= 0.01;
+                    p.scale.x -= 0.1;
+                    p.scale.y = p.scale.x;
+                    if (p.scale.x < 0.01) {
+                        p.alive = false;
+                        p.isVisible = false;
+                        p.color.a = 1.0;
+                        p.color.b = 1.0;
+                        p.color.r = 0.6;
+                        p.color.g = 0.6;
+                    } 
+                }
+             
             }
 
         }
@@ -404,7 +430,7 @@ var createScene = function(canvas, engine) {
     stars.computeParticleRotation = false;
     stars.computeParticleTexture = false;
     stars.setParticles();
-    stars.computeParticleColor = false;
+    //stars.computeParticleColor = false;
     stars.mesh.freezeWorldMatrix();
     stars.mesh.freezeNormals();
 
@@ -525,6 +551,7 @@ var createScene = function(canvas, engine) {
                         impact.scale.y = impact.scale.x;
                         if (enemies[e].shield == 0) {
                             enemies[e].explosion = true;
+                            explosions[p.idx] = true;
                         } 
                     }
                 }

@@ -80,7 +80,7 @@ var createScene = function(canvas, engine) {
     starMat.freeze();
 
     // Enemies
-    var EnemyNb = 5;                            // Max number of enemies
+    var EnemyNb = 10;                            // Max number of enemies
     var EnemyExplosionVelocity = 1.15;          // Enemy particle max velocity
     var enemies = new Array(EnemyNb);           // Pool of enemy objects 
     var EnemyCorrection = 0.0;                  // tmp var for Enemy FOV correction
@@ -113,11 +113,22 @@ var createScene = function(canvas, engine) {
         };
     };
         // Enemy mesh
-    var EnemyModel= BABYLON.MeshBuilder.CreatePolyhedron('emod', {type: 1, size: 0.5, sizeX: 1.5, sizeZ: 2.5}, scene);
+    var disc1 = BABYLON.MeshBuilder.CreateDisc('', {sideOrientation: BABYLON.Mesh.DOUBLESIDE, tessellation: 16, radius: 1.6}, scene);    
+    var disc2 = BABYLON.MeshBuilder.CreateDisc('', {sideOrientation: BABYLON.Mesh.DOUBLESIDE, tessellation: 16, radius: 1.6}, scene);
+    var cyl = BABYLON.MeshBuilder.CreateCylinder('', {diameter: 0.6, height: 4.0 }, scene);
+    var sph = BABYLON.MeshBuilder.CreateSphere('', {diameter: 2.0, segments: 6}, scene);
+    cyl.rotation.z = Math.PI / 2.0;
+    disc1.rotation.y = Math.PI / 2.0;      
+    disc2.rotation.y = - Math.PI / 2.0;
+    disc1.position.x = 2.0;
+    disc2.position.x = -2.0;
+    
+    var EnemyModel = BABYLON.Mesh.MergeMeshes([cyl, sph, disc1, disc2], true, true);
+    //var EnemyModel= BABYLON.MeshBuilder.CreatePolyhedron('emod', {type: 1, size: 0.5, sizeX: 1.5, sizeZ: 2.5}, scene);
     var e = 0|0;
     for (e = 0|0; e < EnemyNb; e++) {
         var EnemySPS = new BABYLON.SolidParticleSystem('es'+e, scene);              // create a SPS per enemy
-        EnemySPS.digest(EnemyModel);                                                // digest the enemy model
+        EnemySPS.digest(EnemyModel, {facetNb: 1, delta: 5});                                                // digest the enemy model
         EnemySPS.buildMesh();
         EnemySPS.mesh.hasVertexAlpha = true;
         EnemySPS.mesh.material = enMat;
@@ -152,7 +163,7 @@ var createScene = function(canvas, engine) {
         EnemySPS.mesh.position.z = 30.0 + Math.random() * 10.0;
         EnemySPS.mesh.position.y = -2.0 + Math.random() * 2.0;
         EnemySPS.mesh.position.x = -24.0 + 12.0 * e;
-        EnemySPS.mesh.rotation.y = e / 10.0;
+        EnemySPS.mesh.rotation.z = Math.random() * e;
     }
     EnemyModel.dispose();
 
@@ -618,7 +629,7 @@ var createScene = function(canvas, engine) {
                 en.sps.setParticles();
             } else {
                 // Ennnemy flying around, tmp behavior : sinusoidal trajectory
-                en.mesh.rotation.y += 0.01;
+                en.mesh.rotation.z += 0.01;
                 en.mesh.position.z += Math.sin(en.mesh.rotation.y + e) / 5.0;
                 en.mesh.position.x += Math.cos(en.mesh.rotation.y - e) / 20.0;
                 en.mesh.position.y += Math.sin(en.mesh.rotation.y + e / 2.0) / 10.0;

@@ -113,13 +113,13 @@ var createScene = function(canvas, engine) {
         };
     };
         // Enemy mesh
-    var disc1 = BABYLON.MeshBuilder.CreateDisc('', {sideOrientation: BABYLON.Mesh.DOUBLESIDE, tessellation: 16, radius: 1.6}, scene);    
-    var disc2 = BABYLON.MeshBuilder.CreateDisc('', {sideOrientation: BABYLON.Mesh.DOUBLESIDE, tessellation: 16, radius: 1.6}, scene);
-    var cyl = BABYLON.MeshBuilder.CreateCylinder('', {diameter: 0.6, height: 4.0 }, scene);
-    var sph = BABYLON.MeshBuilder.CreateSphere('', {diameter: 2.0, segments: 6}, scene);
+    var disc1 = BABYLON.MeshBuilder.CreateCylinder('', { height: 0.1, tessellation: 16|0, diameter: 3.2 }, scene);    
+    var disc2 = BABYLON.MeshBuilder.CreateCylinder('', { height: 0.1, tessellation: 16|0, diameter: 3.2 }, scene);
+    var cyl = BABYLON.MeshBuilder.CreateCylinder('', { diameter: 0.5, height: 4.0, subdivisions: 3 }, scene);
+    var sph = BABYLON.MeshBuilder.CreateSphere('', { diameter: 2.0, segments: 4|0}, scene);
     cyl.rotation.z = Math.PI / 2.0;
-    disc1.rotation.y = Math.PI / 2.0;      
-    disc2.rotation.y = - Math.PI / 2.0;
+    disc1.rotation.z = Math.PI / 2.0;      
+    disc2.rotation.z = -Math.PI / 2.0;
     disc1.position.x = 2.0;
     disc2.position.x = -2.0;
     
@@ -128,7 +128,7 @@ var createScene = function(canvas, engine) {
     var e = 0|0;
     for (e = 0|0; e < EnemyNb; e++) {
         var EnemySPS = new BABYLON.SolidParticleSystem('es'+e, scene);              // create a SPS per enemy
-        EnemySPS.digest(EnemyModel, {facetNb: 1, delta: 5});                                                // digest the enemy model
+        EnemySPS.digest(EnemyModel, {facetNb: 1|0, delta: 6|0});                                                // digest the enemy model
         EnemySPS.buildMesh();
         EnemySPS.mesh.hasVertexAlpha = true;
         EnemySPS.mesh.material = enMat;
@@ -139,8 +139,8 @@ var createScene = function(canvas, engine) {
             curPart.velocity.copyFrom(curPart.position);
             curPart.velocity.multiplyInPlace(enemies[e].randAng);
             curPart.velocity.scaleInPlace(EnemyExplosionVelocity);
-            curPart.uvs.z = 0.1;
-            curPart.uvs.w = 0.6;
+            curPart.uvs.z = 0.05;
+            curPart.uvs.w = 0.05;
         }
         EnemySPS.setParticles();                                                    // set the particle once at their computed positions
         EnemySPS.refreshVisibleSize();                                              // compute the bounding boxes
@@ -614,6 +614,8 @@ var createScene = function(canvas, engine) {
     // Enemy behavior
     var EnemyLimitX = 50.0;
     var EnemyLimitY = 50.0;
+    var k = 0.0;
+    var sign = 1.0;
     var setenemies = function() {
         var en = enemies[0|0];
         for (e = 0|0; e < EnemyNb; e++) {
@@ -629,10 +631,12 @@ var createScene = function(canvas, engine) {
                 en.sps.setParticles();
             } else {
                 // Ennnemy flying around, tmp behavior : sinusoidal trajectory
-                en.mesh.rotation.z += 0.01;
-                en.mesh.position.z += Math.sin(en.mesh.rotation.y + e) / 5.0;
-                en.mesh.position.x += Math.cos(en.mesh.rotation.y - e) / 20.0;
-                en.mesh.position.y += Math.sin(en.mesh.rotation.y + e / 2.0) / 10.0;
+                sign = (e % 2 === 0) ? 1.0 : -1.0;
+                k = Date.now() / 10000.0;
+                en.mesh.rotation.z += sign * Math.sin(k) / 100.0;
+                en.mesh.position.z += Math.sin(en.mesh.rotation.z + e) / 5.0;
+                en.mesh.position.x += Math.cos(en.mesh.rotation.z - e) / 20.0;
+                en.mesh.position.y += Math.sin(en.mesh.rotation.z + e / 2.0) / 10.0;
             }
             en.mesh.position.x -= pointerDistanceX * en.mesh.position.z  / distance;
             en.mesh.position.y -= pointerDistanceY * en.mesh.position.z  / distance;

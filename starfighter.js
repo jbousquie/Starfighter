@@ -151,9 +151,9 @@ var createScene = function(canvas, engine) {
                 p.rotation.x += p.velocity.z * enemies[e].randAng.x;
                 p.rotation.y += p.velocity.x * enemies[e].randAng.y;
                 p.rotation.z += p.velocity.y * enemies[e].randAng.z;
-                p.color.a -= 0.005;
-                explosionLight.intensity -= 0.005;
-                if (explosionLight.intensity < 0.01) { explosionLight.intensity = 0.0; }
+                p.color.a -= 0.001;
+                explosionLight.intensity -= 0.001;
+                if (explosionLight.intensity < 0.001) { explosionLight.intensity = 0.0; }
                 if (p.color.a < 0.01) {
                     enemies[e].mustRebuild = true;
                 }
@@ -634,9 +634,9 @@ var createScene = function(canvas, engine) {
                 sign = (e % 2 === 0) ? 1.0 : -1.0;
                 k = Date.now() / 10000.0;
                 en.mesh.rotation.z += sign * Math.sin(k) / 100.0;
-                en.mesh.position.z += Math.sin(en.mesh.rotation.z + e) / 5.0;
-                en.mesh.position.x += Math.cos(en.mesh.rotation.z - e) / 20.0;
-                en.mesh.position.y += Math.sin(en.mesh.rotation.z + e / 2.0) / 10.0;
+                en.mesh.position.z += Math.sin(Math.abs(en.mesh.rotation.z) + e) / 5.0;
+                en.mesh.position.x += Math.cos(Math.abs(en.mesh.rotation.z) - e) / 20.0;
+                en.mesh.position.y += Math.sin(Math.abs(en.mesh.rotation.z) + e / 2.0) / 10.0;
             }
             en.mesh.position.x -= pointerDistanceX * en.mesh.position.z  / distance;
             en.mesh.position.y -= pointerDistanceY * en.mesh.position.z  / distance;

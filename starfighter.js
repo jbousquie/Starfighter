@@ -151,7 +151,7 @@ var createScene = function(canvas, engine) {
                 p.rotation.x += p.velocity.z * enemies[e].randAng.x;
                 p.rotation.y += p.velocity.x * enemies[e].randAng.y;
                 p.rotation.z += p.velocity.y * enemies[e].randAng.z;
-                p.color.a -= 0.001;
+                p.color.a -= 0.01;
                 explosionLight.intensity -= 0.001;
                 if (explosionLight.intensity < 0.001) { explosionLight.intensity = 0.0; }
                 if (p.color.a < 0.01) {
@@ -160,7 +160,7 @@ var createScene = function(canvas, engine) {
             }
         };
         // set enemy initial positions in space
-        EnemySPS.mesh.position.z = 30.0 + Math.random() * 10.0;
+        EnemySPS.mesh.position.z = 50.0 + Math.random() * 10.0;
         EnemySPS.mesh.position.y = -2.0 + Math.random() * 2.0;
         EnemySPS.mesh.position.x = -24.0 + 12.0 * e;
         EnemySPS.mesh.rotation.z = Math.random() * e;
@@ -612,8 +612,8 @@ var createScene = function(canvas, engine) {
     };
 
     // Enemy behavior
-    var EnemyLimitX = 50.0;
-    var EnemyLimitY = 50.0;
+    var EnemyLimitX = 0.0;
+    var EnemyLimitY = 0.0;
     var k = 0.0;
     var sign = 1.0;
     var setenemies = function() {
@@ -632,15 +632,17 @@ var createScene = function(canvas, engine) {
             } else {
                 // Ennnemy flying around, tmp behavior : sinusoidal trajectory
                 sign = (e % 2 === 0) ? 1.0 : -1.0;
-                k = Date.now() / 10000.0;
-                en.mesh.rotation.z += sign * Math.sin(k) / 100.0;
-                en.mesh.position.z += Math.sin(Math.abs(en.mesh.rotation.z) + e) / 5.0;
-                en.mesh.position.x += Math.cos(Math.abs(en.mesh.rotation.z) - e) / 20.0;
-                en.mesh.position.y += Math.sin(Math.abs(en.mesh.rotation.z) + e / 2.0) / 10.0;
+                k = Date.now() / 1000.0 * sign;
+                en.mesh.rotation.z += Math.sin(k) / (10.0 + e * 5.0);
+                en.mesh.position.z = sightDistance + distance * (1.0 + Math.sin(k + e));
+                en.mesh.position.x += Math.cos(k - e) / 5.0;
+                en.mesh.position.y += Math.sin(k + e / 2.0) / 10.0;
             }
             en.mesh.position.x -= pointerDistanceX * en.mesh.position.z  / distance;
             en.mesh.position.y -= pointerDistanceY * en.mesh.position.z  / distance;
             // keep the Enemy around the frustum
+            EnemyLimitY = en.mesh.position.z * cameraFov * 2.0;
+            EnemyLimitX = EnemyLimitY * aspectRatio;
             if (en.mesh.position.x < -EnemyLimitX) { en.mesh.position.x = -EnemyLimitX; }
             if (en.mesh.position.x > EnemyLimitX)  { en.mesh.position.x = EnemyLimitX; }
             if (en.mesh.position.y < -EnemyLimitY) { en.mesh.position.y = -EnemyLimitY; }
@@ -648,6 +650,7 @@ var createScene = function(canvas, engine) {
         }
     };
 
+console.log(cameraFov);
 
     //scene.debugLayer.show();
     scene.registerBeforeRender(function() {

@@ -10,9 +10,9 @@ var createScene = function(canvas, engine) {
     var V = function(x, y, z) { return new BABYLON.Vector3(+x, +y, +z); }; 
 
     // Global parameters
-    var EnemyNb = 5|0;                                          // Max number of enemies
+    var enemyNb = 5|0;                                          // Max number of enemies
+    var enemySpeed = 1.0;                      // enemy max speed
     var sightDistance = 5|0;                                    // sight distance 
-    var EnemyExplosionVelocity = 1.15;          	            // Enemy particle max velocity
     var canLength = 0.4;                                        // cannon length
     var canRadius = 0.04;                                       // cannon radius
     var laserNb = 12|0;                        // number of avalaible lasers in the pool, suitable value around 8 (2 * 4 cannons)
@@ -21,29 +21,37 @@ var createScene = function(canvas, engine) {
     var starNb = 150|0;                        // star total number in the pool
     var distance = 60.0;                       // star emitter distance from the screen
     var starSpeed = 1.0;                       // star speed on Z axis
+    var enemyExplosionVelocity = 1.15;         // Enemy particle max velocity
     var enemyLaserNb = 30|0;                   // enemy laser max number
-    var enemyLaserSpeed = 0.6;                 // enemy laser speed
-    var enemyFireFrequency = 0.10;             // between 0 and 1 : each frame for each enemy
+    var enemyLaserSpeed = 2.0;                 // enemy laser speed
+    var enemyShield = 8|0;                     // enemy shield = 6 + random * enemyShield
+    var enemyFireFrequency = 0.1;              // between 0 and 1 : each frame for each enemy
+    var enemyFireLimit = 3.0 * sightDistance;  // enemy doesn't fire under this z limit
     var cockpitArea = V(1.0, 1.0, 2.5);        // cockpit sensitive area (-x to x, -y to y, fixed z)
 
     var halfPI = Math.PI / 2.0;                // PI / 2
     var search = true;                         // global boolean for serach in pools
     var l = 0|0;                               // laser index
+    var fired = false;                         // global boolean
 
-
-    // Keyboard inputs
+    // Keyboard and mouse inputs
     var CTRL = 17|0;
     var SHIFT = 16|0;
     var keyboard = [];                                                  // input array
+    var pressedPointer = false;
     function updateInput(event, boolVal) {
         if (event.keyCode == CTRL) { keyboard[CTRL] = boolVal; }
         if (event.keyCode == SHIFT) { keyboard[SHIFT] = boolVal; }
     }    
     window.addEventListener('keydown', function(event) { updateInput(event, true); });
     window.addEventListener('keyup', function(event) { updateInput(event, false); });
-    
-            
-    
+    window.addEventListener('mousedown', function(e) { pressedPointer = true; });
+    window.addEventListener('mouseup', function(e) { pressedPointer = false; });
+    var getInputs = function() {
+        fired = (keyboard[SHIFT] || pressedPointer) ? true : false;
+    };
+
+
     // Scene
     var scene = new BABYLON.Scene(engine);
     scene.clearColor = BABYLON.Color3.Black();
@@ -54,7 +62,7 @@ var createScene = function(canvas, engine) {
     var fovCorrection = cameraFov * sightDistance;              // sight projection ratio from the screen space 
     var aspectRatio = engine.getAspectRatio(camera);                        //  aspect ratio from width/height screen size
     
-    var light = new BABYLON.HemisphericLight('light1', V(0.0, 1.0, -1.0), scene);
+    var light = new BABYLON.HemisphericLight('light1', V(0.0, 1.0, -0.75), scene);
     var lightInitialIntensity = 0.85
     light.intensity = lightInitialIntensity;
 
@@ -106,7 +114,7 @@ var createScene = function(canvas, engine) {
     starMat.freeze();
 
     // Enemies
-    var enemies = new Array(EnemyNb);           // Pool of enemy objects 
+    var enemies = new Array(enemyNb);           // Pool of enemy objects 
     var EnemyCorrection = 0.0;                  // tmp var for Enemy FOV correction
     var eX = 0.0;                               // tmp var for current Enemy x coordinate in the screen space
     var eY = 0.0;                               // tmp var for current Enemy y coordinate in the screen space
@@ -117,10 +125,11 @@ var createScene = function(canvas, engine) {
     var Enemy = function(sps) {
         this.sps = sps;                         // Enemy SPS
         this.mesh = sps.mesh;                   // Enemy SPS mesh
-        this.maxShield = 10|0;                  // Enemy resistance
-        this.shield = this.maxShield;           // current shield value
-        this.explosion = false;                 // if the Enemy is exploding
-        this.mustRebuild = false;               // if the sps must be rebuilt
+        this.maxShield = 6|0 + (Math.random() * enemyShield)|0;                  // Enemy resistance
+        this.speed = enemySpeed * Math.random();                                 // speed
+        this.shield = this.maxShield;                               // current shield value
+        this.explosion = false;                                     // if the Enemy is exploding
+        this.mustRebuild = false;                                   // if the sps must be rebuilt
         this.randAng = V(Math.random(), Math.random(), Math.random());  // random correction for enemy particle rotations and velocities
         this.initialParticlePositions = [];     // initial SPS particle positions computed with digest()
         var initPos = this.initialParticlePositions;
@@ -133,7 +142,7 @@ var createScene = function(canvas, engine) {
                 sps.particles[ip].rotation.y = 0.0;
                 sps.particles[ip].rotation.z = 0.0;
                 sps.particles[ip].velocity.copyFrom(sps.particles[ip].position);
-                sps.particles[ip].velocity.scaleInPlace(Math.random() * EnemyExplosionVelocity);
+                sps.particles[ip].velocity.scaleInPlace(Math.random() * enemyExplosionVelocity);
             }
         };
         this.shoot = function() {
@@ -171,9 +180,8 @@ var createScene = function(canvas, engine) {
     disc2.position.x = -2.0;
     
     var EnemyModel = BABYLON.Mesh.MergeMeshes([cyl, sph, disc1, disc2], true, true);
-    //var EnemyModel= BABYLON.MeshBuilder.CreatePolyhedron('emod', {type: 1, size: 0.5, sizeX: 1.5, sizeZ: 2.5}, scene);
     var e = 0|0;
-    for (e = 0|0; e < EnemyNb; e++) {
+    for (e = 0|0; e < enemyNb; e++) {
         var EnemySPS = new BABYLON.SolidParticleSystem('es'+e, scene);              // create a SPS per enemy
         EnemySPS.digest(EnemyModel, {facetNb: 1|0, delta: 6|0});                                                // digest the enemy model
         EnemySPS.buildMesh();
@@ -185,7 +193,7 @@ var createScene = function(canvas, engine) {
             enemies[e].initialParticlePositions.push(curPart.position.clone());
             curPart.velocity.copyFrom(curPart.position);
             curPart.velocity.multiplyInPlace(enemies[e].randAng);
-            curPart.velocity.scaleInPlace(EnemyExplosionVelocity);
+            curPart.velocity.scaleInPlace(enemyExplosionVelocity);
             curPart.uvs.z = 0.20;                                               // let's do a different render with the same texture as the cockpit one
             curPart.uvs.w = 0.08;
         }
@@ -360,7 +368,7 @@ var createScene = function(canvas, engine) {
     var lightDistance = distance * 0.66;                                // distance from where the laser lights are emitted
     var ballFovCorrection = cameraFov * lightDistance; // FOV correction for the balls in the distance
     var impactInitialColor = new BABYLON.Color4(0.6, 0.6, 1.0, 0.85);   // as their names suggest it
-    var explosionInitialColor = new BABYLON.Color4(1.0, 1.0, 0.0, 0.8);
+    var explosionInitialColor = new BABYLON.Color4(1.0, 1.0, 0.0, 0.98);
     var laserLightInitialColor = new BABYLON.Color4(0.4, 0.4, 1.0, 0.8);
     var enemyLaserInitialColor = new BABYLON.Color4(0.8, 0.0, 0.0, 0.5);
     var laserLightIndex = starNb;                                       // starting index of the laser lights in the sps "particles" array
@@ -406,7 +414,7 @@ var createScene = function(canvas, engine) {
                 p[i].scale.y = p[i].scale.x;
             }  
             // enemy impact or explosion
-            else if (i < enemyLaserNb) {                           
+            else if (i < enemyLaserIndex) {                           
                 p[i].alive = false;
                 p[i].isVisible = false;
                 p[i].color.copyFrom(impactInitialColor);
@@ -516,19 +524,19 @@ var createScene = function(canvas, engine) {
                 p.position.addInPlace(p.velocity);
                 p.position.x += pointerDistanceX * p.position.z * p.velocity.z / distance;
                 p.position.y += pointerDistanceY * p.position.z * p.velocity.z / distance;
-                p.rotation.z += 0.8;
+                p.rotation.z += 0.66;
                 p.scale.x = 2.0 + cockpitArea.z / p.position.z * 4.0;
                 p.scale.y = 4.0 * p.scale.x;
-                p.color.a += 0.01;
+                p.color.a += 0.005;
                 p.color.r += 0.01;
                 p.color.g += 0.01;
-                if (p.color.a > 1.0) { p.color.a = 1.0; }
+                if (p.color.a > 0.9) { p.color.a = 0.9; }
                 if (p.color.r > 1.0) { p.color.r = 1.0; }
                 if (p.color.g < 0.0) { p.color.g = 0.0; }
                 // recycle
                 if (p.position.z < cockpitArea.z) {
                     p.alive = false;
-                    p.visible = false;
+                    p.isVisible = false;
                     // check laser hits cockpit
                     if (p.position.x < cockpitArea.x && p.position.x > -cockpitArea.x && p.position.y < cockpitArea.y && p.position.y > -cockpitArea.y ) {
                         // shake camera
@@ -536,7 +544,10 @@ var createScene = function(canvas, engine) {
                         ouchY = true;
                         ouchZ = true;
                         camToLeft = false;
-                        tmpCam.copyFromFloats((Math.random() - 0.5) * 0.1, Math.random() * 0.1, -Math.random() * 0.1) ;
+                        returnCamX = false;
+                        returnCamY = false;
+                        returnCamZ = false;
+                        tmpCam.copyFromFloats((Math.random() - 0.5) * 0.3, Math.random() * 0.1, -Math.random() * 0.1) ;
                         if (tmpCam.x < 0.0) { camToLeft = true; }
                         light.diffuse.b = 0.0;
                         light.diffuse.g = 0.5;
@@ -587,7 +598,7 @@ var createScene = function(canvas, engine) {
         can = (Math.random() * 4|0)|0;
         pointLight.intensity -= 0.1;
         if (pointLight.intensity < 0.0) { pointLight.intensity = 0.0; }
-        if (keyboard[SHIFT] && cannonHeats[can] == 0|0) {
+        if (fired && cannonHeats[can] == 0|0) {
             cannonHeats[can] = fireHeat;
             while (l < laserNb && search) {
                 laser = lasers[l];                  // current laser
@@ -653,7 +664,7 @@ var createScene = function(canvas, engine) {
                 ball.fired = false;
                 p.alive = false;
                 // check Enemy hit
-                for (e = 0|0; e < EnemyNb; e++) {
+                for (e = 0|0; e < enemyNb; e++) {
                     // compute the enemy 2D coordinates in the screen space
                     EnemyCorrection = enemies[e].mesh.position.z * cameraFov;
                     eX = enemies[e].mesh.position.x / (EnemyCorrection * aspectRatio);
@@ -670,7 +681,7 @@ var createScene = function(canvas, engine) {
                         impact.alive = true;
                         impact.position.x = laser.target.x;                     // set the impact at the target position
                         impact.position.y = laser.target.y;
-                        impact.scale.x = distance / enemies[e].mesh.position.z;
+                        impact.scale.x = distance / enemies[e].mesh.position.z * 1.2;
                         impact.scale.y = impact.scale.x;
                         // enemy exploses
                         if (enemies[e].shield === 0|0) {
@@ -692,9 +703,9 @@ var createScene = function(canvas, engine) {
     var EnemyLimitY = 0.0;
     var k = 0.0;
     var sign = 1.0;
-    var setenemies = function() {
+    var setEnemies = function() {
         var en = enemies[0|0];
-        for (e = 0|0; e < EnemyNb; e++) {
+        for (e = 0|0; e < enemyNb; e++) {
             en = enemies[e];
             if (en.explosion) {             // if currently exploding
                 if (en.mustRebuild) {       // if explosion just finished, then rebuild and reset the Enemy
@@ -708,9 +719,9 @@ var createScene = function(canvas, engine) {
             } else {
                 // Ennnemy flying around, tmp behavior : sinusoidal trajectory
                 sign = (e % 2 === 0) ? 1.0 : -1.0;
-                k = Date.now() / 1000.0 * sign;
-                en.mesh.rotation.z += Math.sin(k) / (10.0 + e * 5.0);
-                en.mesh.rotation.y += (Math.sin(k) / (10.0 + e * 5.0)) / 5.0;
+                k = Date.now() / 10000.0 * sign * en.speed;
+                en.mesh.rotation.z += Math.sin(k) / (10.0 + e * 5.0) * en.speed;
+                en.mesh.rotation.y += (Math.sin(k) / (10.0 + e * 5.0)) / 8.0;
                 en.mesh.position.z = sightDistance + distance * (1.0 + Math.sin(k + e));
                 en.mesh.position.x += Math.cos(k - e) / 2.0;
                 en.mesh.position.y += Math.sin(k + e / 2.0) / 3.0;
@@ -726,7 +737,7 @@ var createScene = function(canvas, engine) {
             if (en.mesh.position.y > EnemyLimitY)  { en.mesh.position.y = EnemyLimitY; }
 
             // shooting
-            if (Math.random() < enemyFireFrequency) {
+            if (Math.random() < enemyFireFrequency && en.mesh.position.z > enemyFireLimit && !en.explosion) {
                 en.shoot();
             }
         }
@@ -741,7 +752,9 @@ var createScene = function(canvas, engine) {
     var tmpCam = V(0.0, 0.0, 0.0);
     var camShakeSpeed = 0.01;
     var camRestoreSpeed = 0.008;
-    var returnCam = false;
+    var returnCamX = false;
+    var returnCamY = false;
+    var returnCamZ = false;
     var setCamera = function() {
         aspectRatio = engine.getAspectRatio(camera);
         light.diffuse.b += 0.1;
@@ -750,48 +763,56 @@ var createScene = function(canvas, engine) {
         if (light.diffuse.b > 1.0) { light.diffuse.b = 1.0; }
         if (light.diffuse.g > 1.0) { light.diffuse.g = 1.0; }
         if (light.intensity < lightInitialIntensity) { light.intensity = lightInitialIntensity; }
+        
         if (ouchY) { 
-            if (camera.position.y < tmpCam.y) {
+            if (camera.position.y < tmpCam.y && !returnCamY) {
                 camera.position.y += camShakeSpeed;
             } else {
                 camera.position.y -= camRestoreSpeed; 
-                if ( camera.position.y > 0.0 ) { 
+                returnCamY = true;
+                if ( camera.position.y <= 0.0 ) { 
                     camera.position.y = 0.0; 
                     ouchY = false; 
+                    returnCamY = false;
                 }
             }
         }
+        
+        
         if (ouchZ) { 
-            if (camera.position.z > tmpCam.z) {
+            if (camera.position.z > tmpCam.z && !returnCamZ) {
                 camera.position.z -= camShakeSpeed;
             } else {
                 camera.position.z += camRestoreSpeed;
-                if ( camera.position.z > 0.0 ) { 
+                returnCamZ = true;
+                if ( camera.position.z >= 0.0 ) { 
                     camera.position.z = 0.0; 
                     ouchZ = false; 
+                    returnCamZ = false;
                 }
             } 
-        }   
+        } 
+         
         if (ouchX) {  
             if (camToLeft) {
-                if (camera.position.x > tmpCam.x && !returnCam) {
+                if (camera.position.x > tmpCam.x && !returnCamX) {
                     camera.position.x -= camShakeSpeed;
                 } else {
                     camera.position.x += camRestoreSpeed;
-                    returnCam = true;
+                    returnCamX = true;
                 }
             } else {
-                if (camera.position.x < tmpCam.x && !returnCam) {
+                if (camera.position.x < tmpCam.x && !returnCamX) {
                     camera.position.x += camShakeSpeed;
                 } else {
                     camera.position.x -= camRestoreSpeed;
-                    returnCam = true;
+                    returnCamX = true;
                 }             
             }
-            if (Math.abs(camera.position.x) < 0.01 && returnCam) {
+            if (Math.abs(camera.position.x) < camRestoreSpeed && returnCamX) {
                 camera.position.x = 0.0;
                 ouchX = false;
-                returnCam = false;
+                returnCamX = false;
             }
 
         }           
@@ -800,10 +821,11 @@ var createScene = function(canvas, engine) {
     //scene.debugLayer.show();
     scene.registerBeforeRender(function() {
         setCamera();
+        getInputs();
         stars.setParticles();
         setSightAndCannons();
         setLasers();
-        setenemies();
+        setEnemies();
     });
     
     return scene;

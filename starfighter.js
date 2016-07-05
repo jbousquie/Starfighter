@@ -10,8 +10,8 @@ var createScene = function(canvas, engine) {
     var V = function(x, y, z) { return new BABYLON.Vector3(+x, +y, +z); }; 
 
     // Global parameters
-    var enemyNb = 5|0;                                          // Max number of enemies
-    var enemySpeed = 1.0;                      // enemy max speed
+    var enemyNb = 8|0;                                          // Max number of enemies
+    var enemySpeed = 2.0;                      // enemy max speed
     var sightDistance = 5|0;                                    // sight distance 
     var canLength = 0.4;                                        // cannon length
     var canRadius = 0.04;                                       // cannon radius
@@ -26,13 +26,19 @@ var createScene = function(canvas, engine) {
     var enemyLaserSpeed = 2.0;                 // enemy laser speed
     var enemyShield = 8|0;                     // enemy shield = 6 + random * enemyShield
     var enemyFireFrequency = 0.1;              // between 0 and 1 : each frame for each enemy
-    var enemyFireLimit = 3.0 * sightDistance;  // enemy doesn't fire under this z limit
+    var enemyFireLimit = 4.0 * sightDistance;  // enemy doesn't fire under this z limit
     var cockpitArea = V(1.0, 1.0, 2.5);        // cockpit sensitive area (-x to x, -y to y, fixed z)
+    var maxShield = 10.0                       // initial cockpit shield resistance
+    
 
+    var alive = true;                          // global boolean
     var halfPI = Math.PI / 2.0;                // PI / 2
     var search = true;                         // global boolean for serach in pools
     var l = 0|0;                               // laser index
     var fired = false;                         // global boolean
+    var cockpitImpactRate = 0.0;               // rate of an impact on the cockpit
+    var shield = maxShield;                    // current cockpit shield
+    var score = 0|0;                           // game score
 
     // Keyboard and mouse inputs
     var CTRL = 17|0;
@@ -63,7 +69,7 @@ var createScene = function(canvas, engine) {
     var aspectRatio = engine.getAspectRatio(camera);                        //  aspect ratio from width/height screen size
     
     var light = new BABYLON.HemisphericLight('light1', V(0.0, 1.0, -0.75), scene);
-    var lightInitialIntensity = 0.85
+    var lightInitialIntensity = 0.80;
     light.intensity = lightInitialIntensity;
 
     // Point light used for the lasers
@@ -99,6 +105,10 @@ var createScene = function(canvas, engine) {
     sightMat.emissiveTexture = sightTexture;
     sightMat.diffuseTexture = sightTexture;
     sightMat.useAlphaFromDiffuseTexture = true;
+        // Shield material
+    var shieldMat = new BABYLON.StandardMaterial("shm", scene);
+    shieldMat.alpha = 0.5;
+    shieldMat.diffuseColor = BABYLON.Color3.Green();
         // Laser material
     var laserMat = new BABYLON.StandardMaterial("lm", scene);
     laserMat.emissiveColor = BABYLON.Color3.White();
@@ -216,8 +226,8 @@ var createScene = function(canvas, engine) {
         };
         // set enemy initial positions in space
         EnemySPS.mesh.position.z = 50.0 + Math.random() * 10.0;
-        EnemySPS.mesh.position.y = -2.0 + Math.random() * 2.0;
-        EnemySPS.mesh.position.x = -24.0 + 12.0 * e;
+        EnemySPS.mesh.position.y = -4.0 + Math.random() * 8.0;
+        EnemySPS.mesh.position.x = -enemyNb * 4.0 + enemyNb * 2.0 * e;
         EnemySPS.mesh.rotation.z = Math.random() * e;
     }
     EnemyModel.dispose();
@@ -230,16 +240,47 @@ var createScene = function(canvas, engine) {
     var tube2 = BABYLON.MeshBuilder.CreateTube('t2', {path: path2, radius: 0.03}, scene);
     var rpath1 = [];
     var rpath2 = [];
+    var rpath3 = [];
+    var initialRpath3 = [];
+    var cockpitHeight = 0.14;
     for (var r = 0; r <= 10; r ++) {
         var t = r / 10; 
-        rpath1.push( V(-0.5 + t, -0.05 * Math.cos(r * Math.PI / 5) - 0.75, 3.1) );
+        rpath1.push( V(-0.5 + t, -0.05 * Math.cos(r * Math.PI / 5.0) - 0.75, 3.1) );
         rpath2.push( V(-0.5 + t, -1.0, 0.0 ) );
+        rpath3.push( V(rpath1[r].x, rpath1[r].y + cockpitHeight, rpath1[r].z) );
+        initialRpath3.push( V(rpath1[r].x, rpath1[r].y + cockpitHeight, rpath1[r].z) );
     }
+    rpath3[0|0].y = rpath1[0|0].y;
+    rpath3[10|0].y = rpath1[10|0].y;
+    initialRpath3[0|0].y = rpath3[0|0].y;
+    initialRpath3[10|0].y = rpath1[10|0].y;
     var rib = BABYLON.MeshBuilder.CreateRibbon('rb', { pathArray: [rpath1, rpath2] }, scene);
     var cockpit = BABYLON.Mesh.MergeMeshes([tube1, tube2, rib], true, true);
     cockpit.alwaysSelectAsActiveMesh = true;                            // the cockpit is always in the frustum
     cockpit.freezeWorldMatrix();                                        // and never moves
     rib = tube1 = tube2 = null;
+
+    // Shield
+    var shieldMesh = BABYLON.MeshBuilder.CreateRibbon('sh', {pathArray: [rpath3, rpath1], updatable: true}, scene);
+    shieldMesh.material = shieldMat;
+    shieldMesh.alwaysSelectAsActiveMesh = true;
+    var setShield = function() {
+        if (shield < 0) {
+            alive = false;
+            if ( window.confirm("You're dead...\n\nSCORE = "+score+"\n\nRetry ?\n\n") ) {
+                shield = maxShield;
+                shieldMat.diffuseColor.r = 0.0;
+                shieldMat.diffuseColor.g = 1.0;
+                shieldMat.alpha = 0.5;
+                score = 0|0;
+                for (var i = 0|0; i < initialRpath3.length; i++) {
+                    rpath3[i].copyFrom(initialRpath3[i]);
+                }
+                BABYLON.MeshBuilder.CreateRibbon(null, {pathArray: [rpath3, rpath1], instance: shieldMesh} );
+                alive = true;
+            }
+        } 
+    };
 
     // Cannons : 4 tube instances
     var canPos = new BABYLON.Vector3(-1.5, -1, 2.2);
@@ -547,15 +588,25 @@ var createScene = function(canvas, engine) {
                         returnCamX = false;
                         returnCamY = false;
                         returnCamZ = false;
-                        tmpCam.copyFromFloats((Math.random() - 0.5) * 0.3, Math.random() * 0.1, -Math.random() * 0.1) ;
+                        cockpitImpactRate = (Math.random() - 0.5) * 0.3;
+                        tmpCam.copyFromFloats(cockpitImpactRate, Math.random() * 0.1, -Math.random() * 0.1) ;
+                        cockpitImpactRate = Math.abs(cockpitImpactRate);
                         if (tmpCam.x < 0.0) { camToLeft = true; }
                         light.diffuse.b = 0.0;
                         light.diffuse.g = 0.5;
                         light.intensity = 1.0;
+                        // update shield
+                        shield -= cockpitImpactRate;
+                        shieldMat.diffuseColor.g -= cockpitImpactRate / shield * 0.8;
+                        shieldMat.diffuseColor.r += cockpitImpactRate / shield * 0.8;
+                        shieldMat.alpha += cockpitImpactRate / shield * 0.5;
+                        for (var i = 1|0; i < rpath3.length - 1|0; i++) {
+                            rpath3[i].y -= (cockpitHeight / 2.0) * (cockpitImpactRate / shield);
+                        }
+                        BABYLON.MeshBuilder.CreateRibbon(null, {pathArray: [rpath3, rpath1], instance: shieldMesh});
                     }
                 }
             }
-            
         }
    }
    
@@ -691,6 +742,7 @@ var createScene = function(canvas, engine) {
                             impact.scale.x = 60.0;
                             explosionLight.position.copyFrom(enemies[e].mesh.position);
                             explosionLight.intensity = explLghtIntensity;
+                            score += 100|0;
                         } 
                     }
                 }
@@ -720,21 +772,23 @@ var createScene = function(canvas, engine) {
                 // Ennnemy flying around, tmp behavior : sinusoidal trajectory
                 sign = (e % 2 === 0) ? 1.0 : -1.0;
                 k = Date.now() / 10000.0 * sign * en.speed;
+                   // keep the enemy around the frustum
+                EnemyLimitY = en.mesh.position.z * cameraFov * 2.0;
+                EnemyLimitX = EnemyLimitY * aspectRatio;
+                if (en.mesh.position.x < -EnemyLimitX) { en.mesh.position.x = -EnemyLimitX; }
+                if (en.mesh.position.x > EnemyLimitX)  { en.mesh.position.x = EnemyLimitX; }
+                if (en.mesh.position.y < -EnemyLimitY) { en.mesh.position.y = -EnemyLimitY; }
+                if (en.mesh.position.y > EnemyLimitY)  { en.mesh.position.y = EnemyLimitY; }
+
                 en.mesh.rotation.z += Math.sin(k) / (10.0 + e * 5.0) * en.speed;
                 en.mesh.rotation.y += (Math.sin(k) / (10.0 + e * 5.0)) / 8.0;
                 en.mesh.position.z = sightDistance + distance * (1.0 + Math.sin(k + e));
-                en.mesh.position.x += Math.cos(k - e) / 2.0;
-                en.mesh.position.y += Math.sin(k + e / 2.0) / 3.0;
+                en.mesh.position.x += Math.cos(k - e) / 5.0;
+                en.mesh.position.y += Math.sin(k + e / 2.0) / 8.0;
             }
             en.mesh.position.x -= pointerDistanceX * en.mesh.position.z  / distance;
             en.mesh.position.y -= pointerDistanceY * en.mesh.position.z  / distance;
-            // keep the Enemy around the frustum
-            EnemyLimitY = en.mesh.position.z * cameraFov * 2.0;
-            EnemyLimitX = EnemyLimitY * aspectRatio;
-            if (en.mesh.position.x < -EnemyLimitX) { en.mesh.position.x = -EnemyLimitX; }
-            if (en.mesh.position.x > EnemyLimitX)  { en.mesh.position.x = EnemyLimitX; }
-            if (en.mesh.position.y < -EnemyLimitY) { en.mesh.position.y = -EnemyLimitY; }
-            if (en.mesh.position.y > EnemyLimitY)  { en.mesh.position.y = EnemyLimitY; }
+
 
             // shooting
             if (Math.random() < enemyFireFrequency && en.mesh.position.z > enemyFireLimit && !en.explosion) {
@@ -778,7 +832,6 @@ var createScene = function(canvas, engine) {
             }
         }
         
-        
         if (ouchZ) { 
             if (camera.position.z > tmpCam.z && !returnCamZ) {
                 camera.position.z -= camShakeSpeed;
@@ -814,18 +867,20 @@ var createScene = function(canvas, engine) {
                 ouchX = false;
                 returnCamX = false;
             }
-
         }           
     }
 
     //scene.debugLayer.show();
     scene.registerBeforeRender(function() {
-        setCamera();
-        getInputs();
-        stars.setParticles();
-        setSightAndCannons();
-        setLasers();
-        setEnemies();
+        if (alive) {
+            setCamera();
+            getInputs();
+            stars.setParticles();
+            setSightAndCannons();
+            setLasers();
+            setEnemies();
+            setShield();
+        }
     });
     
     return scene;

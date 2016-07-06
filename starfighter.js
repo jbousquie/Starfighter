@@ -263,6 +263,7 @@ var createScene = function(canvas, engine) {
     // Shield
     var shieldMesh = BABYLON.MeshBuilder.CreateRibbon('sh', {pathArray: [rpath3, rpath1], updatable: true}, scene);
     shieldMesh.material = shieldMat;
+    shieldMesh.freezeWorldMatrix();
     shieldMesh.alwaysSelectAsActiveMesh = true;
     var setShield = function() {
         if (shield < 0) {

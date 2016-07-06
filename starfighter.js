@@ -10,9 +10,9 @@ var createScene = function(canvas, engine) {
     var V = function(x, y, z) { return new BABYLON.Vector3(+x, +y, +z); }; 
 
     // Global parameters
-    var enemyNb = 8|0;                                          // Max number of enemies
-    var enemySpeed = 2.0;                      // enemy max speed
-    var sightDistance = 5|0;                                    // sight distance 
+    var enemyNb = 10|0;                                          // Max number of enemies
+    var enemySpeed = 3.0;                                       // enemy max speed
+    var sightDistance = 5.0;                                    // sight distance 
     var canLength = 0.4;                                        // cannon length
     var canRadius = 0.04;                                       // cannon radius
     var laserNb = 12|0;                        // number of avalaible lasers in the pool, suitable value around 8 (2 * 4 cannons)
@@ -22,13 +22,13 @@ var createScene = function(canvas, engine) {
     var distance = 60.0;                       // star emitter distance from the screen
     var starSpeed = 1.0;                       // star speed on Z axis
     var enemyExplosionVelocity = 1.15;         // Enemy particle max velocity
-    var enemyLaserNb = 30|0;                   // enemy laser max number
+    var enemyLaserNb = 60|0;                   // enemy laser max number
     var enemyLaserSpeed = 2.0;                 // enemy laser speed
     var enemyShield = 8|0;                     // enemy shield = 6 + random * enemyShield
-    var enemyFireFrequency = 0.1;              // between 0 and 1 : each frame for each enemy
+    var enemyFireFrequency = 0.15;              // between 0 and 1 : each frame for each enemy
     var enemyFireLimit = 4.0 * sightDistance;  // enemy doesn't fire under this z limit
     var cockpitArea = V(1.0, 1.0, 2.5);        // cockpit sensitive area (-x to x, -y to y, fixed z)
-    var maxShield = 10.0                       // initial cockpit shield resistance
+    var maxShield = 6.0                       // initial cockpit shield resistance
     
 
     var alive = true;                          // global boolean
@@ -89,7 +89,7 @@ var createScene = function(canvas, engine) {
     // Materials and Textures
         // Cannon and cockpit material
     var canMat = new BABYLON.StandardMaterial("cm", scene);
-    var canTexture = new BABYLON.Texture("rusty.jpg", scene);
+    var canTexture = new BABYLON.Texture("http://jerome.bousquie.fr/BJS/Starfighter/rusty.jpg", scene);
     canMat.diffuseTexture = canTexture;
         // Enemy material
     var enMat = new BABYLON.StandardMaterial("em", scene);
@@ -100,7 +100,7 @@ var createScene = function(canvas, engine) {
     enMat.freeze();
         // Sight material
     var sightMat = new BABYLON.StandardMaterial("sm", scene);
-    var sightTexture = new BABYLON.Texture("viseur.png", scene);
+    var sightTexture = new BABYLON.Texture("http://jerome.bousquie.fr/BJS/Starfighter/viseur.png", scene);
     sightTexture.hasAlpha = true;
     sightMat.emissiveTexture = sightTexture;
     sightMat.diffuseTexture = sightTexture;
@@ -114,7 +114,7 @@ var createScene = function(canvas, engine) {
     laserMat.emissiveColor = BABYLON.Color3.White();
     laserMat.freeze();
         // Star, laser lights, laser impact and explosion material
-    var starTexture = new BABYLON.Texture("flarealpha.png", scene);
+    var starTexture = new BABYLON.Texture("http://jerome.bousquie.fr/BJS/Starfighter/flarealpha.png", scene);
     starTexture.hasAlpha = true;
     var starMat = new BABYLON.StandardMaterial("sm", scene);
     starMat.emissiveColor = BABYLON.Color3.White();

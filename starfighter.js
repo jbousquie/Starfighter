@@ -195,7 +195,7 @@ var createScene = function(canvas, engine) {
         var EnemySPS = new BABYLON.SolidParticleSystem('es'+e, scene);              // create a SPS per enemy
         EnemySPS.digest(EnemyModel, {facetNb: 1|0, delta: 6|0});                                                // digest the enemy model
         EnemySPS.buildMesh();
-        EnemySPS.mesh.hasVertexAlpha = true;
+        EnemySPS.mesh.hasVertexAlpha = false;
         EnemySPS.mesh.material = enMat;
         enemies[e] = new Enemy(EnemySPS);
         for (var ep = 0|0; ep < EnemySPS.nbParticles; ep++) {                       // initialize the enemy SPS particles
@@ -738,6 +738,7 @@ var createScene = function(canvas, engine) {
                         // enemy exploses
                         if (enemies[e].shield === 0|0) {
                             enemies[e].explosion = true;
+                            enemies[e].sps.mesh.hasVertexAlpha = true;
                             explosions[p.idx] = true;
                             exploded[p.idx] = enemies[e].mesh;
                             impact.scale.x = 60.0;
@@ -767,6 +768,7 @@ var createScene = function(canvas, engine) {
                     en.explosion = false;
                     en.randAng.multiplyByFloats(Math.random(), Math.random(), Math.random());
                     en.shield = en.maxShield;
+                    en.sps.mesh.hasVertexAlpha = false;
                 }
                 en.sps.setParticles();
             } else {

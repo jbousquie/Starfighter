@@ -195,7 +195,7 @@ var createScene = function(canvas, engine) {
         var EnemySPS = new BABYLON.SolidParticleSystem('es'+e, scene);              // create a SPS per enemy
         EnemySPS.digest(EnemyModel, {facetNb: 1|0, delta: 6|0});                                                // digest the enemy model
         EnemySPS.buildMesh();
-        EnemySPS.mesh.hasVertexAlpha = false;
+        EnemySPS.mesh.hasVertexAlpha = true;
         EnemySPS.mesh.material = enMat;
         enemies[e] = new Enemy(EnemySPS);
         for (var ep = 0|0; ep < EnemySPS.nbParticles; ep++) {                       // initialize the enemy SPS particles
@@ -637,6 +637,7 @@ var createScene = function(canvas, engine) {
     
     // Lasers position and animation
     var targetAxis = V(0.0, 0.0, 0.0);              // tmp cross vector target/camera
+    var axis2 = V(0.0, 0.0, 0.0);                   // tmp cross vector laser/targetAxis
     var axis3 = V(0.0, 0.0, 0.0);                   // tmp cross vector laser/targetAxis
     var ballPos = V(0.0, 0.0, 0.0);                 // tmp ball position to be added to its cannon
     var ballRadius = canRadius * 8.0;               // ball initial radius
@@ -670,7 +671,8 @@ var createScene = function(canvas, engine) {
                     laser.mesh.position.copyFrom(laser.target);                     // set the laser mesh position
                     laser.target.subtractToRef(camera.position, targetAxis);        // compute a cross vector from the direction and cam axis 
                     BABYLON.Vector3.CrossToRef(laser.direction, targetAxis, axis3);
-                    BABYLON.Vector3.RotationFromAxisToRef(axis3, null, targetAxis, laser.mesh.rotation);    // rotate the laser mesh
+                    BABYLON.Vector3.CrossToRef(targetAxis, axis3, axis2);
+                    BABYLON.Vector3.RotationFromAxisToRef(axis3, axis2, targetAxis, laser.mesh.rotation);    // rotate the laser mesh
                     laser.mesh.scale.y = laser.scale * fovCorrection / laserSpeed;                          // scale the laser mesh triangle
                     laser.mesh.scale.x = 1.0;
                     ball.mesh.scale.x = ballRadius * (1.2 - Math.random() * 0.8);                           // scale the laser ball
@@ -738,7 +740,6 @@ var createScene = function(canvas, engine) {
                         // enemy exploses
                         if (enemies[e].shield === 0|0) {
                             enemies[e].explosion = true;
-                            enemies[e].sps.mesh.hasVertexAlpha = true;
                             explosions[p.idx] = true;
                             exploded[p.idx] = enemies[e].mesh;
                             impact.scale.x = 60.0;
@@ -762,13 +763,14 @@ var createScene = function(canvas, engine) {
         for (e = 0|0; e < enemyNb; e++) {
             en = enemies[e];
             if (en.explosion) {             // if currently exploding
+                en.mesh.hasVertexAlpha = true;
                 if (en.mustRebuild) {       // if explosion just finished, then rebuild and reset the Enemy
                     en.rebuild();
                     en.mustRebuild = false;
                     en.explosion = false;
                     en.randAng.multiplyByFloats(Math.random(), Math.random(), Math.random());
                     en.shield = en.maxShield;
-                    en.sps.mesh.hasVertexAlpha = false;
+                    //en.mesh.hasVertexAlpha = false;
                 }
                 en.sps.setParticles();
             } else {

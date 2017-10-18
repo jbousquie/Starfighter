@@ -376,7 +376,7 @@ var createScene = function(canvas, engine) {
         this.direction = V(0.0, 0.0, 0.0);              // vector : laser cannon - target
         this.fired = false;                             // laser fired ?
         this.cannon = 0;                                // index of the fired cannon in the array "cannons"
-        this.scale = 0.0;                               // current scale
+        this.scaling = 0.0;                               // current scale
         this.screenTarget = BABYLON.Vector2.Zero();     // target coordinates in the screen space
     };
 
@@ -388,8 +388,8 @@ var createScene = function(canvas, engine) {
     for (l = 0|0; l < laserNb * 2|0; l++) {
         laser = new Laser(l);
         laser.mesh.alive = false;
-        laser.mesh.scale.y = 0.0;
-        laser.mesh.scale.x = 0.0;
+        laser.mesh.scaling.y = 0.0;
+        laser.mesh.scaling.x = 0.0;
         laser.mesh.position.z = sightDistance;
         lasers.push(laser);
     }
@@ -452,8 +452,8 @@ var createScene = function(canvas, engine) {
                 p[i].position.z = lightDistance;
                 p[i].velocity.z = 0.5;
                 p[i].color.copyFrom(laserLightInitialColor);
-                p[i].scale.x = distance / lightDistance * 1.2;
-                p[i].scale.y = p[i].scale.x;
+                p[i].scaling.x = distance / lightDistance * 1.2;
+                p[i].scaling.y = p[i].scaling.x;
             }  
             // enemy impact or explosion
             else if (i < enemyLaserIndex) {                           
@@ -504,8 +504,8 @@ var createScene = function(canvas, engine) {
                 p.position.z = distance * (1.0 - Math.random() / 4.0);
                 p.position.x = starEmitterSize * (Math.random() - 0.5) + distance * pointerDistanceX / 2.0;
                 p.position.y = starEmitterSize * (Math.random() - 0.5) + distance * pointerDistanceY / 2.0;
-                p.scale.x = 1.1 - Math.random() * 0.2;
-                p.scale.y = p.scale.x;
+                p.scaling.x = 1.1 - Math.random() * 0.2;
+                p.scaling.y = p.scaling.x;
                 p.velocity.z = 1.1 - Math.random() * 0.2;
             }
        }
@@ -518,7 +518,7 @@ var createScene = function(canvas, engine) {
                 p.position.y -= pointerDistanceY * p.position.z * p.velocity.z / distance;
                 // recycle laser light
                 if (p.position.z > distance) {
-                    p.alive = false;
+                    //p.alive = false;
                     p.isVisible = false;
                 }
             }
@@ -531,16 +531,16 @@ var createScene = function(canvas, engine) {
                 // explosion
                 if (explosions[p.idx - impactIndex]) {     
                     p.position.copyFrom(exploded[p.idx - impactIndex].position);
-                    p.scale.x *= (1.0 + 0.5 * Math.random());
-                    p.scale.y = p.scale.x / (1.1 + Math.random());
+                    p.scaling.x *= (1.0 + 0.5 * Math.random());
+                    p.scaling.y = p.scaling.x / (1.1 + Math.random());
                     p.color.r = explosionInitialColor.r - Math.random() * 0.1;
                     p.color.g = explosionInitialColor.g - Math.random() * 0.1;
                     p.color.b = explosionInitialColor.b;
                     p.color.a -= 0.05;
                     // recycle explosion
-                    if (p.scale.x > 250.0) {         
+                    if (p.scaling.x > 250.0) {         
                         p.isVisible = false;
-                        p.alive = false;
+                        //p.alive = false;
                         p.position.z = sightDistance;
                         p.color.copyFrom(impactInitialColor);
                         explosions[p.idx - impactIndex] = false;
@@ -549,11 +549,11 @@ var createScene = function(canvas, engine) {
                 // impact
                 else {                                        
                     p.color.a -= 0.01;
-                    p.scale.x -= 0.1;
-                    p.scale.y = p.scale.x;
+                    p.scaling.x -= 0.1;
+                    p.scaling.y = p.scaling.x;
                     // recycle impact
-                    if (p.scale.x < 0.01) {         
-                        p.alive = false;
+                    if (p.scaling.x < 0.01) {         
+                        //p.alive = false;
                         p.isVisible = false;
                         p.color.copyFrom(impactInitialColor);
                     } 
@@ -567,8 +567,8 @@ var createScene = function(canvas, engine) {
                 p.position.x += pointerDistanceX * p.position.z * p.velocity.z / distance;
                 p.position.y += pointerDistanceY * p.position.z * p.velocity.z / distance;
                 p.rotation.z += 0.66;
-                p.scale.x = 2.0 + cockpitArea.z / p.position.z * 4.0;
-                p.scale.y = 4.0 * p.scale.x;
+                p.scaling.x = 2.0 + cockpitArea.z / p.position.z * 4.0;
+                p.scaling.y = 4.0 * p.scaling.x;
                 p.color.a += 0.005;
                 p.color.r += 0.01;
                 p.color.g += 0.01;
@@ -577,7 +577,7 @@ var createScene = function(canvas, engine) {
                 if (p.color.g < 0.0) { p.color.g = 0.0; }
                 // recycle
                 if (p.position.z < cockpitArea.z) {
-                    p.alive = false;
+                    //p.alive = false;
                     p.isVisible = false;
                     // check laser hits cockpit
                     if (p.position.x < cockpitArea.x && p.position.x > -cockpitArea.x && p.position.y < cockpitArea.y && p.position.y > -cockpitArea.y ) {
@@ -666,17 +666,17 @@ var createScene = function(canvas, engine) {
                     laser.screenTarget.copyFromFloats(pointerDistanceX, pointerDistanceY);
                     laser.target.copyFrom(sight.position);              // store the laser target position
                     laser.direction.copyFrom(cannonDirections[can]);    // store the laser direction from its cannon
-                    laser.scale = laser.direction.length();             // store the laser scale
+                    laser.scaling = laser.direction.length();             // store the laser scale
                     laser.direction.normalize();
                     laser.mesh.position.copyFrom(laser.target);                     // set the laser mesh position
                     laser.target.subtractToRef(camera.position, targetAxis);        // compute a cross vector from the direction and cam axis 
                     BABYLON.Vector3.CrossToRef(laser.direction, targetAxis, axis3);
                     BABYLON.Vector3.CrossToRef(targetAxis, axis3, axis2);
                     BABYLON.Vector3.RotationFromAxisToRef(axis3, axis2, targetAxis, laser.mesh.rotation);    // rotate the laser mesh
-                    laser.mesh.scale.y = laser.scale * fovCorrection / laserSpeed;                          // scale the laser mesh triangle
-                    laser.mesh.scale.x = 1.0;
-                    ball.mesh.scale.x = ballRadius * (1.2 - Math.random() * 0.8);                           // scale the laser ball
-                    ball.mesh.scale.y = ball.mesh.scale.x;
+                    laser.mesh.scaling.y = laser.scaling * fovCorrection / laserSpeed;                          // scale the laser mesh triangle
+                    laser.mesh.scaling.x = 1.0;
+                    ball.mesh.scaling.x = ballRadius * (1.2 - Math.random() * 0.8);                           // scale the laser ball
+                    ball.mesh.scaling.y = ball.mesh.scaling.x;
                     laser.direction.scaleToRef(canLength + Math.random() * 0.05, ballPos);                  // set the ball position from the cannon and the laser direction
                     ball.mesh.position.copyFrom(ballPos.addInPlace(cannons[can].position));
                     stars.particles[lg].alive = true;                                                                       // activate the related laser light in the star sps
@@ -701,19 +701,19 @@ var createScene = function(canvas, engine) {
             // move or scale lasers and balls
             laser = lasers[p.idx];                  // current laser
             ball = lasers[p.idx + laserNb];         // current related laser ball
-            p.scale.y *= laserSpeed;                // scale laser
-            p.scale.x *= laserSpeed;
-            ball.mesh.scale.x *= laserSpeed;        // scale ball
-            if (ball.mesh.scale.x < 0.02) {         
-                ball.mesh.scale.x = 0.0; 
+            p.scaling.y *= laserSpeed;                // scale laser
+            p.scaling.x *= laserSpeed;
+            ball.mesh.scaling.x *= laserSpeed;        // scale ball
+            if (ball.mesh.scaling.x < 0.02) {         
+                ball.mesh.scaling.x = 0.0; 
             } else {                                // move ball on laser direction
-                laser.direction.scaleToRef(canLength + 0.03 * (1.0 - Math.random() * 0.5) / p.scale.x, ballPos);
+                laser.direction.scaleToRef(canLength + 0.03 * (1.0 - Math.random() * 0.5) / p.scaling.x, ballPos);
                 ball.mesh.position.copyFrom(ballPos.addInPlace(cannons[laser.cannon].position));     
             }
-            ball.mesh.scale.y = ball.mesh.scale.x;  
-            if (p.scale.y <= 0.01) {                // target "reached" by laser
+            ball.mesh.scaling.y = ball.mesh.scaling.x;  
+            if (p.scaling.y <= 0.01) {                // target "reached" by laser
                 // recycle laser
-                p.scale.y = 0.0;
+                p.scaling.y = 0.0;
                 laser.fired = false;
                 ball.fired = false;
                 p.alive = false;
@@ -735,14 +735,14 @@ var createScene = function(canvas, engine) {
                         impact.alive = true;
                         impact.position.x = laser.target.x;                     // set the impact at the target position
                         impact.position.y = laser.target.y;
-                        impact.scale.x = distance / enemies[e].mesh.position.z * 1.2;
-                        impact.scale.y = impact.scale.x;
+                        impact.scaling.x = distance / enemies[e].mesh.position.z * 1.2;
+                        impact.scaling.y = impact.scaling.x;
                         // enemy exploses
                         if (enemies[e].shield === 0|0) {
                             enemies[e].explosion = true;
                             explosions[p.idx] = true;
                             exploded[p.idx] = enemies[e].mesh;
-                            impact.scale.x = 60.0;
+                            impact.scaling.x = 60.0;
                             explosionLight.position.copyFrom(enemies[e].mesh.position);
                             explosionLight.intensity = explLghtIntensity;
                             score += 100|0;

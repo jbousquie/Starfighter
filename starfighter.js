@@ -97,7 +97,6 @@ var createScene = function(canvas, engine) {
     enMat.diffuseColor = new BABYLON.Color3(0.4, 1.0, 0.8);
     enMat.diffuseTexture = canTexture;
     enMat.specularPower = 1024.0;
-    enMat.freeze();
         // Sight material
     var sightMat = new BABYLON.StandardMaterial("sm", scene);
     var sightTexture = new BABYLON.Texture("http://jerome.bousquie.fr/BJS/Starfighter/viseur.png", scene);
@@ -145,6 +144,7 @@ var createScene = function(canvas, engine) {
         var initPos = this.initialParticlePositions;
         var acc = this.accuracy;
         this.rebuild = function() {
+            sps.mesh.hasVertexAlpha = false;
             for (var ip = 0|0; ip < sps.nbParticles; ip++) {
                 sps.particles[ip].position.copyFrom(initPos[ip]);
                 sps.particles[ip].color.a = 1.0;
@@ -195,7 +195,7 @@ var createScene = function(canvas, engine) {
         var EnemySPS = new BABYLON.SolidParticleSystem('es'+e, scene);              // create a SPS per enemy
         EnemySPS.digest(EnemyModel, {facetNb: 1|0, delta: 6|0});                                                // digest the enemy model
         EnemySPS.buildMesh();
-        EnemySPS.mesh.hasVertexAlpha = true;
+        EnemySPS.mesh.hasVertexAlpha = false;
         EnemySPS.mesh.material = enMat;
         enemies[e] = new Enemy(EnemySPS);
         for (var ep = 0|0; ep < EnemySPS.nbParticles; ep++) {                       // initialize the enemy SPS particles
@@ -212,6 +212,7 @@ var createScene = function(canvas, engine) {
         // enemy explosion
         EnemySPS.updateParticle = function(p) {
             if (enemies[e].explosion) {
+                enemies[e].sps.mesh.hasVertexAlpha = true;
                 p.position.addInPlace(p.velocity);
                 p.rotation.x += p.velocity.z * enemies[e].randAng.x;
                 p.rotation.y += p.velocity.x * enemies[e].randAng.y;
